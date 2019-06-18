@@ -46,9 +46,9 @@ $ContainerName   = 'container-name'
 $VM_Name = "vm to work on "
 
 # Number data disks to add
-$Number_datadisks = ""
+$Number_datadisks = 2
 
-# Size of data disks to add in MB . I do X (where X is value in MB)  * 1024 to get MB into GB . In this case Im adding 10GB disk
+# Size of data disks to add in MB . I do X (where X is value in MB)  * 1024 to get MB into GB
 $datadisks_size = 10 * 1024 
 
 #### Variables Definition -- End 
@@ -108,3 +108,6 @@ write-host ""
  
  }
 
+# Let's disconnect from any possible cluster to make sure we end the way we started
+
+Disconnect-NTNXCluster *

@@ -9,12 +9,11 @@
 #
 #
 # Description  
-# AHV Remove disks fromv m
-# Script that removes *all* disks (except CDROM and disk scsi-0) from a  VM running on a Nutanix AHV Cluster
+# AHV Add disk to VM 
+# Script that adds disks to a VM running on a Nutanix AHV Cluster
 #
 # V 0.1 -- Initial Release
 #
-
 
 # Load the Nutanix snap-in
 
@@ -45,6 +44,12 @@ $ContainerName   = 'container-name'
 
 # Name of the VM to add disks to
 $VM_Name = "vm to work on "
+
+# Number data disks to add
+$Number_datadisks = 2
+
+# Size of data disks to add in MB . I do X (where X is value in MB)  * 1024 to get MB into GB
+$datadisks_size = 10 * 1024 
 
 #### Variables Definition -- End 
 
@@ -78,21 +83,31 @@ If ( !$ClusterConnection.IsConnected )
 write-host "Connected to $Cluster_IP" -ForegroundColor Green
 write-host "" 
 
-# Search for the VM Name and grab it's ID. ID is needed to use as argument when removing disk(s) from the vm 
+# Search for the VM Name and grab it's ID. ID is needed to use as argument when adding disk(s) to the VM
 $vminfo = Get-NTNXVM | Where-Object {$_.vmName -like $VM_Name}
 $vmId = ($vminfo.vmid.split(":"))[2]
 
 write-host "Working on container $ContainerName for VM $VM_Name with ID $vmID" 
 write-host ""
 
-$CurrentDisks = Get-NTNXVMDisk -Vmid $vmId -IncludeDiskSizes | Where-Object {$_.isCdrom -eq $false} | where-object {$_.id -gt "scsi-0"}
+    #Setting up the create disk specification 
+    $diskCreateSpec = New-NTNXObject -Name VmDiskSpecCreateDTO
+    $diskcreatespec.containername = $ContainerName
+    $diskcreatespec.sizeMb = $datadisks_size
+    # Creating the Disk(s)
+    $vmDisk =  New-NTNXObject –Name VMDiskDTO
+    $vmDisk.vmDiskCreate = $diskCreateSpec
 
-$CurrentDisks = $CurrentDisks | Sort-Object id
-If(-not [string]::IsNullOrEmpty($CurrentDisks)) {
-    #Remove Disk(s) 
-    Foreach ($CurrentDisk in $CurrentDisks){
-        write-host ""
-        Write-Verbose "Removing disk: $($CurrentDisk.id) " -Verbose
-    }
-     }
+ # Adding the disk(s) to the VM
 
+# This allows to iterate from 1 until the number of datadisks specified 
+ 1..$Number_datadisks | % { 
+
+ Write-host "Creating Disk $_ with size" "$($datadisks_size/1024)" "GB on container $ContainerName for VM $VM_Name"
+ Add-NTNXVMDisk -Vmid $vmId -Disks $vmDisk | Out-Null
+ 
+ }
+
+# Let's disconnect from any possible cluster to make sure we end the way we started
+
+Disconnect-NTNXCluster *
